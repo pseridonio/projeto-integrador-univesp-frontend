@@ -1,158 +1,96 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Mail, Lock, Coffee, Eye, EyeOff } from "lucide-react";
 
 export function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setIsLoading(true);
 
     try {
-      // TODO: Integrar com serviço de autenticação
-      console.log('Login attempt:', { email, password });
-
-      // Simulação de sucesso - remover após integração com backend
-      // navigate('/dashboard');
+      console.log("Login attempt:", { email, password });
+      // Simulação de sucesso
+      localStorage.setItem("authToken", "demo-token");
+      navigate("/dashboard");
     } catch (err) {
-      setError('Erro ao fazer login. Tente novamente.');
-      console.error('Erro ao fazer login:', err);
+      setError("Erro ao fazer login. Tente novamente.");
+      console.error(err);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleTogglePasswordVisibility = () => {
-    setShowPassword((prev) => !prev);
-  };
-
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md space-y-8">
-        {/* Logo e Título */}
-        <div className="text-center">
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#8B6F47]">
-            <svg
-              className="h-12 w-12 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M14 4h3a2 2 0 012 2v3a2 2 0 01-2 2h-3V4zm0 0h-4a2 2 0 00-2 2v3a2 2 0 002 2h4V4z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M7 18v-2a2 2 0 012-2h6a2 2 0 012 2v2M10 10h4M10 14h4"
-              />
-            </svg>
+    <div className="min-h-screen bg-[#fbf7f3] flex items-center justify-center px-6 py-12">
+      <div className="w-full max-w-md bg-white p-10 rounded-2xl shadow-[0_10px_30px_rgba(139,111,71,0.08)]">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-[#8B6F47] mb-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
+            <Coffee className="w-10 h-10 text-white" strokeWidth={2} />
           </div>
-          <h1 className="text-3xl font-semibold text-foreground">Bem-vindo</h1>
-          <p className="mt-2 text-base text-muted-foreground">CafeSystem</p>
+          <h1 className="text-[#3b2b20] mb-2 text-3xl font-semibold">Bem-vindo</h1>
+          <p className="text-[#7a6250] text-sm">CafeSystem</p>
         </div>
 
-        {/* Mensagem de Erro */}
         {error && (
-          <div className="rounded-lg border border-destructive bg-destructive/10 p-3 text-sm text-destructive">
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             {error}
           </div>
         )}
 
-        {/* Formulário */}
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Email */}
-          <div>
-            <label htmlFor="email" className="mb-2 block text-base text-foreground">
-              E-mail
-            </label>
-            <div className="relative flex items-center">
-              <Mail className="absolute left-4 h-5 w-5 text-muted-foreground" />
-              <input
-                id="email"
-                type="email"
-                placeholder="seu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                aria-label="E-mail"
-                className="w-full rounded-lg border border-border bg-input-background py-3 pl-12 pr-4 text-foreground placeholder-muted-foreground transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-20"
-              />
-            </div>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <div className="flex items-center border border-[#e6dcd3] rounded-full px-4 py-3 shadow-sm bg-white">
+            <Mail className="w-5 h-5 text-[#bfaea0] mr-3" />
+            <input
+              type="email"
+              placeholder="seu@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="flex-1 outline-none text-[#4b3a30] placeholder-[#cbbfb4] bg-transparent"
+            />
           </div>
 
-          {/* Senha */}
-          <div>
-            <label htmlFor="password" className="mb-2 block text-base text-foreground">
-              Senha
-            </label>
-            <div className="relative flex items-center">
-              <Lock className="absolute left-4 h-5 w-5 text-muted-foreground" />
-              <input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                aria-label="Senha"
-                className="w-full rounded-lg border border-border bg-input-background py-3 pl-12 pr-12 text-foreground placeholder-muted-foreground transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-20"
-              />
-              <button
-                type="button"
-                onClick={handleTogglePasswordVisibility}
-                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-                className="absolute right-4 flex items-center text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {showPassword ? (
-                  <EyeOff className="h-5 w-5" />
-                ) : (
-                  <Eye className="h-5 w-5" />
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Link Esqueci Senha */}
-          <div className="flex justify-end">
-            <a
-              href="/esqueceu-senha"
-              className="text-sm font-medium text-[#C85A1E] transition-colors hover:text-[#A84715]"
+          <div className="flex items-center border border-[#e6dcd3] rounded-full px-4 py-3 shadow-sm bg-white">
+            <Lock className="w-5 h-5 text-[#bfaea0] mr-3" />
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Senha"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="flex-1 outline-none text-[#4b3a30] placeholder-[#cbbfb4] bg-transparent"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="ml-3 text-[#8b6f47]"
+              aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
             >
-              Esqueci a senha
-            </a>
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
           </div>
 
-          {/* Botão Entrar */}
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full rounded-lg border border-border bg-card py-3 font-medium text-foreground transition-all hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-[#8B6F47] text-white py-3 rounded-full text-lg font-medium shadow-[0_6px_18px_rgba(139,111,71,0.16)] hover:bg-[#7a5a3a] transition"
           >
-            {isLoading ? 'Entrando...' : 'Entrar'}
+            {isLoading ? "Entrando..." : "Entrar"}
           </button>
         </form>
 
-        {/* Link Cadastro */}
-        <div className="text-center">
-          <span className="text-sm text-muted-foreground">Não tem uma conta? </span>
-          <a
-            href="/novo-usuario"
-            className="text-sm font-medium text-[#C85A1E] transition-colors hover:text-[#A84715]"
-          >
+        <div className="text-center mt-6">
+          <span className="text-sm text-gray-600">Não tem uma conta? </span>
+          <a href="/novo-usuario" className="text-sm font-medium text-[#C85A1E] ml-1">
             Cadastre-se
           </a>
         </div>

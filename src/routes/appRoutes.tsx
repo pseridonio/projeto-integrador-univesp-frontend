@@ -1,9 +1,10 @@
 import type { RouteObject } from "react-router-dom";
 import { Navigate } from "react-router-dom";
 
-import { ForgotPasswordPage } from "../pages/auth/ForgotPasswordPage";
 import { LoginPage } from "../pages/auth/LoginPage";
 import { RegisterPage } from "../pages/auth/RegisterPage";
+import { PrivateRoute } from "./PrivateRoute";
+import { privateRoutes } from "./privateRoutes";
 
 export const appRoutes: RouteObject[] = [
   {
@@ -19,8 +20,8 @@ export const appRoutes: RouteObject[] = [
     element: <RegisterPage />,
   },
   {
-    path: "/esqueceu-senha",
-    element: <ForgotPasswordPage />,
+    element: <PrivateRoute />,
+    children: privateRoutes,
   },
 ];
 
