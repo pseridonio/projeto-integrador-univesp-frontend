@@ -1,51 +1,90 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, DollarSign, FileText } from "lucide-react";
+import { apiGet } from "../../shared/services/api";
 
-type TableStatus = "available" | "in-use" | "closed";
-
-interface Table {
-  id: number;
-  status: TableStatus;
-  commandNumber?: number;
-}
-
-interface Product {
+type Pedido = {
   id: number;
   name: string;
   price: number;
-  category: string;
+  qty: number;
+};
+
+type Comanda = {
+  id: number;
+  number?: number;
+  status?: string;
+  pedidos?: Pedido[];
+  total?: number;
+  items?: number;
+  openedAt?: string;
+};
+
+type User = {
+  id?: number;
+  name?: string;
+  fullName?: string;
+};
+
+function isStatusInUse(status?: string) {
+  if (!status) return false;
+  return /EM[_ -]?USO|EMUSO|EM USO|EM-USO|EM_USO|IN[_ -]?USE|INUSE|in-use/i.test(status);
+}
+
+function isStatusClosed(status?: string) {
+  if (!status) return false;
+  return /FECHAD|FECHADA|FECHADO|CLOSED/i.test(status);
 }
 
 export function DashboardPage() {
-  const [activeMenu] = useState("mapa-mesas");
-
-  const tables: Table[] = [
-    { id: 1, status: "in-use", commandNumber: 101 },
-    { id: 2, status: "available" },
-    { id: 3, status: "in-use", commandNumber: 102 },
-    { id: 4, status: "closed", commandNumber: 103 },
-    { id: 5, status: "available" },
-    { id: 6, status: "in-use", commandNumber: 104 },
-    { id: 7, status: "available" },
-    { id: 8, status: "in-use", commandNumber: 105 },
-    { id: 9, status: "closed", commandNumber: 106 },
-    { id: 10, status: "available" },
-  ];
-
-  const topProducts: Product[] = [
-    { id: 1, name: "Café Expresso", price: 5.5, category: "Bebidas" },
-    { id: 2, name: "Cappuccino", price: 8.0, category: "Bebidas" },
-    { id: 3, name: "Pão de Queijo", price: 6.5, category: "Alimentos" },
-    { id: 4, name: "Croissant", price: 7.0, category: "Alimentos" },
-    { id: 5, name: "Suco Natural", price: 9.0, category: "Bebidas" },
-    { id: 6, name: "Bolo de Cenoura", price: 8.5, category: "Alimentos" },
-  ];
-
-  const openCommands = tables.filter((t) => t.status === "in-use").length;
-  const dailySales = 1247.8;
+  const [commands, setCommands] = useState<Comanda[]>([]);
+  const [topProducts, setTopProducts] = useState<Array<{ name: string; qty: number; price?: number }>>([]);
+  const [dailySales, setDailySales] = useState<number>(0);
+  const [openCommands, setOpenCommands] = useState<number>(0);
+  const [attendantName, setAttendantName] = useState<string>("");
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const base = import.meta.env.VITE_API_BASE_URL ?? "";
+        const cmds: Comanda[] = await apiGet(`${base}/comandas`);
+        setCommands(cmds || []);
+
+        const open = (cmds || []).filter((c) => isStatusInUse(c.status)).length;
+        setOpenCommands(open);
+
+        const closed = (cmds || []).filter((c) => isStatusClosed(c.status));
+        const sales = closed.reduce((s, c) => s + (c.total ?? 0), 0);
+        setDailySales(sales);
+
+        // aggregate top products from closed commands
+        const productMap = new Map<string, { name: string; qty: number; price?: number }>();
+        closed.forEach((c) => {
+          (c.pedidos || []).forEach((p) => {
+            const key = p.id ? String(p.id) : p.name;
+            const entry = productMap.get(key) ?? { name: p.name, qty: 0, price: p.price };
+            entry.qty += p.qty || 0;
+            productMap.set(key, entry);
+          });
+        });
+        const tops = Array.from(productMap.values()).sort((a, b) => b.qty - a.qty).slice(0, 6);
+        setTopProducts(tops);
+
+        // load attendant / user
+        try {
+          const user: User = await apiGet(`${base}/users/me`);
+          setAttendantName(user?.name ?? user?.fullName ?? "");
+        } catch (e) {
+          // ignore if user endpoint not available
+        }
+      } catch (err) {
+        console.error("Failed to load dashboard data", err);
+      }
+    }
+    load();
+  }, []);
 
   return (
     <div className="flex-1 flex flex-col">
@@ -53,10 +92,11 @@ export function DashboardPage() {
         <div>
           <h1 className="text-2xl font-semibold text-[#3E2723]">Dashboard</h1>
           <p className="text-sm text-[#8D6E63]">Visão geral do sistema</p>
+          {attendantName ? <p className="text-sm text-[#8D6E63]">Atendente: {attendantName}</p> : null}
         </div>
         <button
-          className="bg-[#8B4513] text-white px-5 py-3 rounded-xl hover:bg-[#5D2E1A] transition-colors flex items-center gap-2"
-          onClick={() => navigate('/orders')}
+          className=" w-full sm:w-auto bg-[#8B4513] text-white px-5 py-3 rounded-xl hover:bg-[#5D2E1A] transition-colors flex itens-center gap-2"
+          onClick={() => navigate('/NewOrder') }
         >
           <Plus className="w-4 h-4" />
           <span className="text-sm">Abrir nova comanda</span>
@@ -93,15 +133,15 @@ export function DashboardPage() {
         <div className="bg-white rounded-2xl p-6 border border-[#D7CCC8]">
           <h3 className="text-[#3E2723] mb-6">Produtos Mais Vendidos</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {topProducts.map((product) => (
+            {topProducts.map((product, idx) => (
               <button
-                key={product.id}
+                key={`${product.name}-${idx}`}
                 className="bg-[#F5F1ED] rounded-xl p-4 hover:bg-[#EFEBE9] transition-colors text-left border border-[#D7CCC8]"
               >
                 <p className="text-sm text-[#3E2723] mb-1">{product.name}</p>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-[#8D6E63]">{product.category}</span>
-                  <span className="text-sm text-[#8B4513]">R$ {product.price.toFixed(2)}</span>
+                  <span className="text-xs text-[#8D6E63]">Vendidos: {product.qty}</span>
+                  <span className="text-sm text-[#8B4513]">{product.price ? `R$ ${product.price.toFixed(2)}` : ""}</span>
                 </div>
               </button>
             ))}
