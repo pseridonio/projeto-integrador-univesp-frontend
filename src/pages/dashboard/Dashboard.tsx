@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, DollarSign, FileText } from "lucide-react";
-import { apiGet } from "../../shared/services/api";
+import { getComandas, getCurrentUser } from "../../shared/services/api";
 
 type Pedido = {
   id: number;
@@ -48,8 +48,7 @@ export function DashboardPage() {
   useEffect(() => {
     async function load() {
       try {
-        const base = import.meta.env.VITE_API_BASE_URL ?? "";
-        const cmds: Comanda[] = await apiGet(`${base}/comandas`);
+        const cmds: Comanda[] = await getComandas();
         setCommands(cmds || []);
 
         const open = (cmds || []).filter((c) => isStatusInUse(c.status)).length;
@@ -72,13 +71,6 @@ export function DashboardPage() {
         const tops = Array.from(productMap.values()).sort((a, b) => b.qty - a.qty).slice(0, 6);
         setTopProducts(tops);
 
-        // load attendant / user
-        try {
-          const user: User = await apiGet(`${base}/users/me`);
-          setAttendantName(user?.name ?? user?.fullName ?? "");
-        } catch (e) {
-          // ignore if user endpoint not available
-        }
       } catch (err) {
         console.error("Failed to load dashboard data", err);
       }
@@ -92,7 +84,6 @@ export function DashboardPage() {
         <div>
           <h1 className="text-2xl font-semibold text-[#3E2723]">Dashboard</h1>
           <p className="text-sm text-[#8D6E63]">Visão geral do sistema</p>
-          {attendantName ? <p className="text-sm text-[#8D6E63]">Atendente: {attendantName}</p> : null}
         </div>
         <button
           className=" w-full sm:w-auto bg-[#8B4513] text-white px-5 py-3 rounded-xl hover:bg-[#5D2E1A] transition-colors flex itens-center gap-2"

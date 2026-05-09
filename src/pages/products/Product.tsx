@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Package, Search, Plus, Edit, Trash2 } from "lucide-react";
 import { Input, Button } from "../../shared/ui";
+import { getProducts, deleteProduct, updateProduct as apiUpdateProduct, getCategories } from "../../shared/services/api";
 
 type Product = {
   id: number;
@@ -17,48 +18,47 @@ export function ProductPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("Todos");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const products: Product[] = [
-    { id: 1, name: "Coxinha", category: "Comidas", subcategory: "Salgados", price: 7.5, available: true },
-    { id: 2, name: "Pão de Batata", category: "Comidas", subcategory: "Salgados", price: 6.5, available: true },
-    { id: 3, name: "Pão de Queijo", category: "Comidas", subcategory: "Salgados", price: 6.0, available: true },
-    { id: 4, name: "Bolo de Cenoura", category: "Comidas", subcategory: "Doces", price: 8.5, available: true },
-    { id: 5, name: "Bolo de Laranja", category: "Comidas", subcategory: "Doces", price: 8.5, available: true },
-    { id: 6, name: "Cookie", category: "Comidas", subcategory: "Doces", price: 5.0, available: true },
-    { id: 7, name: "Café Espresso", category: "Bebidas", subcategory: "Bebidas Quentes", price: 5.5, available: true },
-    { id: 8, name: "Café Espresso Duplo", category: "Bebidas", subcategory: "Bebidas Quentes", price: 8.0, available: true },
-    { id: 9, name: "Macchiato", category: "Bebidas", subcategory: "Bebidas Quentes", price: 7.0, available: true },
-    { id: 10, name: "Cappuccino", category: "Bebidas", subcategory: "Bebidas Quentes", price: 8.0, available: true },
-    { id: 11, name: "Coca Cola", category: "Bebidas", subcategory: "Bebidas Geladas", price: 6.0, available: true },
-    { id: 12, name: "Fanta Laranja", category: "Bebidas", subcategory: "Bebidas Geladas", price: 6.0, available: true },
-    { id: 13, name: "Guaraná Antártica", category: "Bebidas", subcategory: "Bebidas Geladas", price: 6.0, available: true },
-    { id: 14, name: "Chá Gelado", category: "Bebidas", subcategory: "Bebidas Geladas", price: 7.0, available: true },
-    { id: 15, name: "Chá Matte", category: "Bebidas", subcategory: "Bebidas Geladas", price: 7.5, available: true },
-    { id: 16, name: "Suco de Laranja", category: "Bebidas", subcategory: "Bebidas Geladas", price: 9.0, available: true },
-    { id: 17, name: "Limonada", category: "Bebidas", subcategory: "Bebidas Geladas", price: 8.0, available: true },
-  ];
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categoriesFromApi, setCategoriesFromApi] = useState<Array<{ name: string; subcategories?: string[] }>>([]);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const prods: Product[] = await getProducts();
+        setProducts(prods || []);
+        // load categories too
+        try {
+          const cats: any = await getCategories();
+          setCategoriesFromApi((cats as any) || []);
+        } catch (e) {
+          console.warn('Failed to load categories', e);
+          setCategoriesFromApi([]);
+        }
+      } catch (e) {
+        console.error("Failed to load products", e);
+      }
+    }
+    load();
+  }, []);
 
   const categories = [
-    { id: "todos", name: "Todos", count: products.length },
-    { id: "bebidas", name: "Bebidas", count: products.filter((p) => p.category === "Bebidas").length },
-    { id: "bebidas-quentes", name: "Bebidas Quentes", count: products.filter((p) => p.subcategory === "Bebidas Quentes").length },
-    { id: "bebidas-geladas", name: "Bebidas Geladas", count: products.filter((p) => p.subcategory === "Bebidas Geladas").length },
-    { id: "comidas", name: "Comidas", count: products.filter((p) => p.category === "Comidas").length },
-    { id: "salgados", name: "Salgados", count: products.filter((p) => p.subcategory === "Salgados").length },
-    { id: "doces", name: "Doces", count: products.filter((p) => p.subcategory === "Doces").length },
+    { id: 'todos', name: 'Todos', count: products.length },
+    // merge API categories while keeping counts derived from products
+    ...categoriesFromApi.map((c) => ({ id: c.name.toLowerCase().replace(/\s+/g, '-'), name: c.name, count: products.filter((p) => p.category === c.name).length })),
   ];
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
 
     if (selectedCategory === "Todos") return matchesSearch;
-    if (selectedCategory === "Bebidas") return matchesSearch && product.category === "Bebidas";
-    if (selectedCategory === "Comidas") return matchesSearch && product.category === "Comidas";
-    if (selectedCategory === "Bebidas Quentes") return matchesSearch && product.subcategory === "Bebidas Quentes";
-    if (selectedCategory === "Bebidas Geladas") return matchesSearch && product.subcategory === "Bebidas Geladas";
-    if (selectedCategory === "Salgados") return matchesSearch && product.subcategory === "Salgados";
-    if (selectedCategory === "Doces") return matchesSearch && product.subcategory === "Doces";
 
-    return matchesSearch;
+    // compara com categoria principal
+    if (product.category === selectedCategory) return matchesSearch;
+
+    // compara com subcategoria
+    if (product.subcategory === selectedCategory) return matchesSearch;
+
+    return false;
   });
 
   const handleAddProduct = () => {
@@ -70,7 +70,14 @@ export function ProductPage() {
   };
 
   const handleDeleteProduct = (productId: number) => {
-    console.log("Deletar produto:", productId);
+    (async () => {
+      try {
+        await deleteProduct(productId);
+        setProducts((prev) => prev.filter((p) => p.id !== productId));
+      } catch (e) {
+        console.error("Failed to delete product", e);
+      }
+    })();
   };
 
   return (

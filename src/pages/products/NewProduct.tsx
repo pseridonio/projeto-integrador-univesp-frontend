@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Save } from "lucide-react";
 import { Input, Button } from "../../shared/ui";
+import { createProduct, getCategories } from "../../shared/services/api";
 
 export function NewProductPage() {
   const navigate = useNavigate();
@@ -10,26 +11,49 @@ export function NewProductPage() {
   const [subcategory, setSubcategory] = useState("");
   const [price, setPrice] = useState("");
 
-  const mainCategories = ["Bebidas", "Comidas", "Sobremesas", "Outros"];
+  const [categoriesFromApi, setCategoriesFromApi] = useState<Array<{ name: string; subcategories?: string[] }>>([]);
+  const mainCategories = categoriesFromApi.map((c) => c.name);
+  const subcategories = (() => {
+    const found = categoriesFromApi.find((c) => c.name === category);
+    return found ? (found.subcategories || []) : [];
+  })();
 
-  const subcategories = [
-    "Bebidas Quentes",
-    "Bebidas Geladas",
-    "Salgados",
-    "Doces",
-    "Lanches",
-  ];
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Criar produto:", {
-      name: productName,
-      category,
-      subcategory,
-      price: parseFloat(price || "0"),
-    });
-    navigate("/products");
+    if (!isFormValid) return;
+    setSubmitting(true);
+    try {
+      const payload = {
+        name: productName,
+        category,
+        subcategory: subcategory || null,
+        price: parseFloat(price || "0"),
+        available: true,
+      };
+      await createProduct(payload as any);
+      navigate("/products");
+    } catch (err) {
+      console.error("Failed to create product", err);
+      alert("Falha ao criar produto");
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  // load categories from backend
+  useEffect(() => {
+    (async () => {
+      try {
+        const cats: any = await getCategories();
+        setCategoriesFromApi((cats as any) || []);
+      } catch (e) {
+        console.warn('Failed to load categories', e);
+        setCategoriesFromApi([]);
+      }
+    })();
+  }, []);
 
   const isFormValid = productName.trim() !== "" && category !== "" && price !== "" && parseFloat(price || "0") > 0;
 
@@ -95,19 +119,29 @@ export function NewProductPage() {
                 <label htmlFor="subcategory" className="block text-sm text-[#3E2723] mb-2">
                   Subcategoria <span className="text-xs text-[#8D6E63]">(opcional)</span>
                 </label>
-                <select
-                  id="subcategory"
-                  value={subcategory}
-                  onChange={(e) => setSubcategory(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-[#D7CCC8] bg-[#F5F1ED] text-[#3E2723] focus:outline-none focus:ring-2 focus:ring-[#8B4513] focus:border-transparent"
-                >
-                  <option value="">Nenhuma</option>
-                  {subcategories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
+                {subcategories.length > 0 ? (
+                  <select
+                    id="subcategory"
+                    value={subcategory}
+                    onChange={(e) => setSubcategory(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-[#D7CCC8] bg-[#F5F1ED] text-[#3E2723] focus:outline-none focus:ring-2 focus:ring-[#8B4513] focus:border-transparent"
+                  >
+                    <option value="">Nenhuma</option>
+                    {subcategories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <Input
+                    id="subcategory"
+                    value={subcategory}
+                    onChange={(e) => setSubcategory(e.target.value)}
+                    placeholder="Subcategoria (opcional)"
+                    className="w-full"
+                  />
+                )}
               </div>
 
               <div>
@@ -137,11 +171,11 @@ export function NewProductPage() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={!isFormValid}
+                  disabled={!isFormValid || submitting}
                   className="flex-1"
                 >
                   <Save className="w-5 h-5" />
-                  <span>Salvar Produto</span>
+                  <span>{submitting ? "Salvando..." : "Salvar Produto"}</span>
                 </Button>
               </div>
             </form>

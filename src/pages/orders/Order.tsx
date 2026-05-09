@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Clock, ChevronRight } from "lucide-react";
+import { getComandas, createComanda as apiCreateComanda, updateComanda as apiUpdateComanda } from "../../shared/services/api";
 
 type ComandaStatus = "DISPONIVEL" | "EM_USO" | "FECHADA";
 
@@ -43,69 +44,19 @@ function finalizarPagamento(c?: Comanda): Comanda | undefined {
 export function OrderPage() {
   const navigate = useNavigate();
 
-  // load comandas from localStorage or use mock data
-  const [comandas, setComandas] = useState<Comanda[]>(() => {
-    try {
-      const raw = localStorage.getItem("comandas");
-      if (raw) return JSON.parse(raw) as Comanda[];
-    } catch (e) {
-      console.error("Failed to parse comandas from localStorage", e);
-    }
+  const [comandas, setComandas] = useState<Comanda[]>([]);
 
-    return [
-      {
-        id: 1,
-        number: 101,
-        status: "EM_USO",
-        pedidos: [
-          { id: 1, name: "Café Expresso", price: 5.5, qty: 1 },
-          { id: 2, name: "Pão de Queijo", price: 6.5, qty: 2 },
-        ],
-        total: 18.5,
-        items: 3,
-        openedAt: "10:30",
-      },
-      {
-        id: 2,
-        number: 102,
-        status: "EM_USO",
-        pedidos: [{ id: 3, name: "Cappuccino", price: 8.0, qty: 1 }],
-        total: 8.0,
-        items: 1,
-        openedAt: "10:45",
-      },
-      {
-        id: 3,
-        number: 103,
-        status: "FECHADA",
-        pedidos: [
-          { id: 4, name: "Bolo de Cenoura", price: 8.5, qty: 1 },
-          { id: 5, name: "Suco Natural", price: 9.0, qty: 1 },
-        ],
-        total: 17.5,
-        items: 2,
-        openedAt: "09:15",
-      },
-      {
-        id: 4,
-        number: 104,
-        status: "EM_USO",
-        pedidos: [],
-        total: 0,
-        items: 0,
-        openedAt: "11:00",
-      },
-      {
-        id: 5,
-        number: 105,
-        status: "DISPONIVEL",
-        pedidos: [],
-        total: 0,
-        items: 0,
-        openedAt: "11:15",
-      },
-    ];
-  });
+  useEffect(() => {
+    async function loadComandas() {
+      try {
+        const cmds: Comanda[] = await getComandas();
+        setComandas(cmds || []);
+      } catch (err) {
+        console.error("Failed to load comandas", err);
+      }
+    }
+    loadComandas();
+  }, []);
 
   const [newProductName, setNewProductName] = useState("");
   const [newProductPrice, setNewProductPrice] = useState("");
@@ -132,44 +83,42 @@ export function OrderPage() {
     }
   };
 
-  const handleCreateCommand = () => {
-    const nextId = comandas.length + 1;
-    const nextNumber = 100 + nextId;
-    const nova: Comanda = {
-      id: nextId,
-      number: nextNumber,
-      status: "DISPONIVEL",
-      pedidos: [],
-      total: 0,
-      items: 0,
-      openedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    };
-    setComandas((prev) => {
-      const next = [nova, ...prev];
-      try {
-        localStorage.setItem("comandas", JSON.stringify(next));
-      } catch (e) {
-        console.error("Failed to persist comandas", e);
-      }
-      return next;
-    });
-    navigate(`/orders/${nova.id}`);
+  const handleCreateCommand = async () => {
+    try {
+      const payload = { status: "DISPONIVEL" };
+      const created: Comanda = await apiCreateComanda(payload as any);
+      // refresh list or insert created at top
+      setComandas((prev) => [created, ...prev]);
+      navigate(`/orders/${created.id}`);
+    } catch (e) {
+      console.error("Failed to create comanda", e);
+      // fallback to navigation
+      navigate(`/NewOrder`);
+    }
   };
 
   const handleOpenDetails = (commandId: number) => {
     navigate(`/orders/${commandId}`);
   };
 
-  const updateComanda = (updated: Comanda) => {
-    setComandas((prev) => {
-      const next = prev.map((c) => (c.id === updated.id ? updated : c));
-      try {
-        localStorage.setItem("comandas", JSON.stringify(next));
-      } catch (e) {
-        console.error("Failed to persist comandas", e);
-      }
-      return next;
-    });
+  const updateComanda = async (updated: Comanda) => {
+    try {
+      const res = await apiUpdateComanda(updated.id, updated as any);
+      const newCom: Comanda = (res as any) ?? updated;
+      setComandas((prev) => {
+        const next = prev.map((c) => (c.id === newCom.id ? newCom : c));
+        try {
+          localStorage.setItem("comandas", JSON.stringify(next));
+        } catch (e) {
+          console.error("Failed to persist comandas", e);
+        }
+        return next;
+      });
+    } catch (e) {
+      console.error("Failed to update comanda", e);
+      // fallback to local update
+      setComandas((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+    }
   };
 
   function handleAbrir(id: number) {
@@ -194,23 +143,14 @@ export function OrderPage() {
     const name = newProductName.trim();
     const price = parseFloat(newProductPrice || "0");
     if (!name || !price) return;
-    setComandas((prev) => {
-      const next = prev.map((c) => {
-        if (c.id !== id) return c;
-        if (c.status !== "EM_USO") return c;
-        const nextPid = Date.now();
-        const pedidos = [...c.pedidos, { id: nextPid, name, price, qty: 1 }];
-        const total = pedidos.reduce((s, p) => s + p.price * p.qty, 0);
-        const items = pedidos.reduce((s, p) => s + p.qty, 0);
-        return { ...c, pedidos, total, items };
-      });
-      try {
-        localStorage.setItem("comandas", JSON.stringify(next));
-      } catch (e) {
-        console.error("Failed to persist comandas", e);
-      }
-      return next;
-    });
+    const c = comandas.find((x) => x.id === id);
+    if (!c || c.status !== "EM_USO") return;
+    const nextPid = Date.now();
+    const pedidos = [...(c.pedidos || []), { id: nextPid, name, price, qty: 1 }];
+    const total = pedidos.reduce((s, p) => s + p.price * p.qty, 0);
+    const items = pedidos.reduce((s, p) => s + p.qty, 0);
+    const updated = { ...c, pedidos, total, items } as Comanda;
+    updateComanda(updated);
     setNewProductName("");
     setNewProductPrice("");
   }

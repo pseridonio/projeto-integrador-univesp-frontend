@@ -1,6 +1,34 @@
+import { useEffect, useState } from "react";
 import { Link, Outlet } from "react-router-dom";
+import { getCurrentUser } from "../shared/services/api";
+
+type User = {
+  id?: number;
+  name?: string;
+  fullName?: string;
+  role?: string;
+};
 
 export function PrivateLayout() {
+  const [attendantName, setAttendantName] = useState<string>("");
+  const [attendantRole, setAttendantRole] = useState<string>("Atendente");
+
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        const user: User = await getCurrentUser();
+        const name = user?.name ?? user?.fullName ?? "";
+        setAttendantName(name);
+        setAttendantRole(user?.role ?? "Atendente");
+      } catch (err) {
+        console.error("Failed to load user data", err);
+      }
+    }
+    fetchUser();
+  }, []);
+
+  const initials = (attendantName ? attendantName.substring(0, 2).toUpperCase() : "UI");
+
   return (
     <div className="min-h-screen flex bg-[#f7f2ee] text-[#3b2b20]">
       <aside className="w-64 bg-white border-r border-[#e9e0d9]">
@@ -20,10 +48,10 @@ export function PrivateLayout() {
 
         <div className="p-6">
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-10 h-10 rounded-full bg-[#e9ded6] flex items-center justify-center text-sm">JD</div>
+            <div className="w-10 h-10 rounded-full bg-[#e9ded6] flex items-center justify-center text-sm">{initials}</div>
             <div>
-              <div className="font-medium">João da Silva</div>
-              <div className="text-xs text-[#8D6E63]">Atendente</div>
+              <div className="font-medium">{attendantName || "Usuário não identificado"}</div>
+              <div className="text-xs text-[#8D6E63]">{attendantRole}</div>
             </div>
           </div>
 
