@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Package, Search, Plus, Edit, Trash2 } from "lucide-react";
 import { Input, Button } from "../../shared/ui";
 import { getProducts, deleteProduct, updateProduct as apiUpdateProduct, getCategories } from "../../shared/services/api";
+import { formatCurrency } from "../../shared/utils/format";
 
 type Product = {
   id: number;
@@ -19,32 +20,34 @@ export function ProductPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const [products, setProducts] = useState<Product[]>([]);
-  const [categoriesFromApi, setCategoriesFromApi] = useState<Array<{ name: string; subcategories?: string[] }>>([]);
+  const [apiCategories, setApiCategories] = useState<Array<{ name: string; subcategories?: string[] }>>([]);
 
   useEffect(() => {
     async function load() {
       try {
         const prods: Product[] = await getProducts();
         setProducts(prods || []);
-        // load categories too
         try {
           const cats: any = await getCategories();
-          setCategoriesFromApi((cats as any) || []);
+          setApiCategories((cats as any) || []);
         } catch (e) {
-          console.warn('Failed to load categories', e);
-          setCategoriesFromApi([]);
+          console.warn('Falha ao carregar categorias', e);
+          setApiCategories([]);
         }
       } catch (e) {
-        console.error("Failed to load products", e);
+        console.error("Falha ao carregar produtos", e);
       }
     }
     load();
   }, []);
 
+  // combina categorias principais e subcategorias para filtro
   const categories = [
     { id: 'todos', name: 'Todos', count: products.length },
-    // merge API categories while keeping counts derived from products
-    ...categoriesFromApi.map((c) => ({ id: c.name.toLowerCase().replace(/\s+/g, '-'), name: c.name, count: products.filter((p) => p.category === c.name).length })),
+    ...apiCategories.map((c) => ({ 
+      id: c.name.toLowerCase().replace(/\s+/g, '-'), 
+      name: c.name, 
+      count: products.filter((p) => p.category === c.name).length })),
   ];
 
   const filteredProducts = products.filter((product) => {
@@ -75,7 +78,7 @@ export function ProductPage() {
         await deleteProduct(productId);
         setProducts((prev) => prev.filter((p) => p.id !== productId));
       } catch (e) {
-        console.error("Failed to delete product", e);
+        console.error("Falha ao excluir produto", e);
       }
     })();
   };

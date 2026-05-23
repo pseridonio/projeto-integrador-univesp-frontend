@@ -9,25 +9,30 @@ type User = {
   role?: string;
 };
 
+//Função para extrair iniciais do nome do usuário, considerando variações de nome completo ou nome de usuário
+function getInitials(name?: string): string {
+  return name ? name.substring(0, 2).toUpperCase() : "UI";
+}
+
 export function PrivateLayout() {
-  const [attendantName, setAttendantName] = useState<string>("");
-  const [attendantRole, setAttendantRole] = useState<string>("Atendente");
+  const [userName, setUserName] = useState<string>("");
+  const [userRole, setUserRole] = useState<string>("Atendente");
 
   useEffect(() => {
     async function fetchUser() {
       try {
         const user: User = await getCurrentUser();
         const name = user?.name ?? user?.fullName ?? "";
-        setAttendantName(name);
-        setAttendantRole(user?.role ?? "Atendente");
+        setUserName(name);
+        setUserRole(user?.role ?? "Atendente");
       } catch (err) {
-        console.error("Failed to load user data", err);
+        console.error("Falha ao carregar dados", err);
       }
     }
     fetchUser();
   }, []);
 
-  const initials = (attendantName ? attendantName.substring(0, 2).toUpperCase() : "UI");
+  const initials = getInitials (userName);
 
   return (
     <div className="min-h-screen flex bg-[#f7f2ee] text-[#3b2b20]">
@@ -50,8 +55,8 @@ export function PrivateLayout() {
           <div className="flex items-center gap-4 mb-4">
             <div className="w-10 h-10 rounded-full bg-[#e9ded6] flex items-center justify-center text-sm">{initials}</div>
             <div>
-              <div className="font-medium">{attendantName || "Usuário não identificado"}</div>
-              <div className="text-xs text-[#8D6E63]">{attendantRole}</div>
+              <div className="font-medium">{userName || "Usuário não identificado"}</div>
+              <div className="text-xs text-[#8D6E63]">{userRole}</div>
             </div>
           </div>
 

@@ -3,18 +3,19 @@ import { useNavigate } from "react-router-dom";
 import { Plus, DollarSign, FileText } from "lucide-react";
 import { getComandas, getCurrentUser } from "../../shared/services/api";
 
-type Pedido = {
+//Tipos para dados de comanda, pedidos e usuário, considerando que a API pode retornar campos opcionais ou com variações de nome
+type OrderItem = {
   id: number;
   name: string;
   price: number;
   qty: number;
 };
 
-type Comanda = {
+type Order = {
   id: number;
   number?: number;
   status?: string;
-  pedidos?: Pedido[];
+  pedidos?: OrderItem[];
   total?: number;
   items?: number;
   openedAt?: string;
@@ -26,39 +27,49 @@ type User = {
   fullName?: string;
 };
 
-function isStatusInUse(status?: string) {
-  if (!status) return false;
-  return /EM[_ -]?USO|EMUSO|EM USO|EM-USO|EM_USO|IN[_ -]?USE|INUSE|in-use/i.test(status);
+//Enums e funções auxiliares para status de comanda, considerando variações de texto que podem vir da API
+enum OrderStatus {
+  OPEN = "OPEN",
+  CLOSED = "CLOSED",
+  UNKNOWN = "UNKNOWN",
 }
 
-function isStatusClosed(status?: string) {
-  if (!status) return false;
-  return /FECHAD|FECHADA|FECHADO|CLOSED/i.test(status);
+//Normaliza status de comanda para os valores esperados, considerando variações comuns
+function normalizeStatus(status?: string): OrderStatus {
+  if (!status) return OrderStatus.UNKNOWN;
+  const s = status.toUpperCase();
+  if (/USO|INUSE|IN-USE/.test(s)) return OrderStatus.OPEN;
+  if (/FECHAD|CLOSED/.test(s)) return OrderStatus.CLOSED;
+  return OrderStatus.UNKNOWN;
+}
+
+//funçao para formatar moeda
+function formatCurrency(value: number): string {
+  return `R$ ${value.toFixed(2)}`;
 }
 
 export function DashboardPage() {
-  const [commands, setCommands] = useState<Comanda[]>([]);
+  const [commands, setCommands] = useState<Order[]>([]);
   const [topProducts, setTopProducts] = useState<Array<{ name: string; qty: number; price?: number }>>([]);
   const [dailySales, setDailySales] = useState<number>(0);
   const [openCommands, setOpenCommands] = useState<number>(0);
-  const [attendantName, setAttendantName] = useState<string>("");
 
   const navigate = useNavigate();
 
   useEffect(() => {
     async function load() {
       try {
-        const cmds: Comanda[] = await getComandas();
+        const cmds: Order[] = await getComandas();
         setCommands(cmds || []);
 
-        const open = (cmds || []).filter((c) => isStatusInUse(c.status)).length;
+        const open = (cmds || []).filter((c) => normalizeStatus(c.status) === OrderStatus.OPEN).length;
         setOpenCommands(open);
 
-        const closed = (cmds || []).filter((c) => isStatusClosed(c.status));
+        const closed = (cmds || []).filter((c) => normalizeStatus(c.status) === OrderStatus.CLOSED);
         const sales = closed.reduce((s, c) => s + (c.total ?? 0), 0);
         setDailySales(sales);
 
-        // aggregate top products from closed commands
+        // Agregação dos produtos mais vendidos
         const productMap = new Map<string, { name: string; qty: number; price?: number }>();
         closed.forEach((c) => {
           (c.pedidos || []).forEach((p) => {
@@ -72,7 +83,7 @@ export function DashboardPage() {
         setTopProducts(tops);
 
       } catch (err) {
-        console.error("Failed to load dashboard data", err);
+        console.error("Falha ao carregar dados do dashboard", err);
       }
     }
     load();
@@ -87,7 +98,7 @@ export function DashboardPage() {
         </div>
         <button
           className=" w-full sm:w-auto bg-[#8B4513] text-white px-5 py-3 rounded-xl hover:bg-[#5D2E1A] transition-colors flex itens-center gap-2"
-          onClick={() => navigate('/NewOrder') }
+          onClick={() => navigate('/orders/new') }
         >
           <Plus className="w-4 h-4" />
           <span className="text-sm">Abrir nova comanda</span>
@@ -112,7 +123,7 @@ export function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-[#8D6E63] mb-1">Vendas do Dia</p>
-                <p className="text-3xl text-[#3E2723]">R$ {dailySales.toFixed(2)}</p>
+                <p className="text-3xl text-[#3E2723]">R$ {formatCurrency(dailySales)}</p>
               </div>
               <div className="w-12 h-12 rounded-full bg-[#558B2F]/10 flex items-center justify-center">
                 <DollarSign className="w-6 h-6 text-[#558B2F]" />
@@ -132,7 +143,7 @@ export function DashboardPage() {
                 <p className="text-sm text-[#3E2723] mb-1">{product.name}</p>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-[#8D6E63]">Vendidos: {product.qty}</span>
-                  <span className="text-sm text-[#8B4513]">{product.price ? `R$ ${product.price.toFixed(2)}` : ""}</span>
+                  <span className="text-sm text-[#8B4513]">{product.price ? formatCurrency(product.price) : ""}</span>
                 </div>
               </button>
             ))}
