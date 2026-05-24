@@ -11,7 +11,7 @@ export function LoginPage() {
 
   const navigate = useNavigate();
 
-//Lista de e-mails
+//Lista de e-mails  permitidos para acesso ao sistema
   const allowedEmails = ["joaosilva@cafesystem.com.br"];
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -21,7 +21,7 @@ export function LoginPage() {
 
     try {
       console.log("Login attempt:", { email, password });
-      
+
       if (allowedEmails.includes(email)) {
         // Simulação de sucesso
         localStorage.setItem("authToken", "demo-token");
