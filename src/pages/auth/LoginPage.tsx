@@ -11,6 +11,9 @@ export function LoginPage() {
 
   const navigate = useNavigate();
 
+//Lista de e-mails
+  const allowedEmails = ["joaosilva@cafesystem.com.br"];
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -18,9 +21,14 @@ export function LoginPage() {
 
     try {
       console.log("Login attempt:", { email, password });
-      // Simulação de sucesso
-      localStorage.setItem("authToken", "demo-token");
-      navigate("/dashboard");
+      
+      if (allowedEmails.includes(email)) {
+        // Simulação de sucesso
+        localStorage.setItem("authToken", "demo-token");
+        navigate("/dashboard");
+      } else {
+        setError("Acesso permitido apenas para o e-mail cadastrado.");
+      }
     } catch (err) {
       setError("Erro ao fazer login. Tente novamente.");
       console.error(err);
@@ -86,14 +94,7 @@ export function LoginPage() {
           >
             {isLoading ? "Entrando..." : "Entrar"}
           </button>
-        </form>
-
-        <div className="text-center mt-6">
-          <span className="text-sm text-gray-600">Não tem uma conta? </span>
-          <a href="/novo-usuario" className="text-sm font-medium text-[#C85A1E] ml-1">
-            Cadastre-se
-          </a>
-        </div>
+        </form>        
       </div>
     </div>
   );

@@ -2,12 +2,9 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, DollarSign, FileText } from "lucide-react";
 
-type TableStatus = "available" | "in-use" | "closed";
-
-interface Table {
+interface Command {
   id: number;
-  status: TableStatus;
-  commandNumber?: number;
+  itens: { name: string; price: number }[];
 }
 
 interface Product {
@@ -18,20 +15,13 @@ interface Product {
 }
 
 export function DashboardPage() {
-  const [activeMenu] = useState("mapa-mesas");
-
-  const tables: Table[] = [
-    { id: 1, status: "in-use", commandNumber: 101 },
-    { id: 2, status: "available" },
-    { id: 3, status: "in-use", commandNumber: 102 },
-    { id: 4, status: "closed", commandNumber: 103 },
-    { id: 5, status: "available" },
-    { id: 6, status: "in-use", commandNumber: 104 },
-    { id: 7, status: "available" },
-    { id: 8, status: "in-use", commandNumber: 105 },
-    { id: 9, status: "closed", commandNumber: 106 },
-    { id: 10, status: "available" },
-  ];
+  // Mock inicial de comandas abertas
+  const [comandas, setComandas] = useState<Command[]>([
+    { id: 101, itens: [{ name: "Café Expresso", price: 5.5 }, { name: "Pão de Queijo", price: 6.5 }] },
+    { id: 102, itens: [{ name: "Cappuccino", price: 8.0 }] },
+    { id: 104, itens: [{ name: "Croissant", price: 7.0 }, { name: "Suco Natural", price: 9.0 }] },
+    { id: 105, itens: [{ name: "Bolo de Cenoura", price: 8.5 }] },
+  ]);
 
   const topProducts: Product[] = [
     { id: 1, name: "Café Expresso", price: 5.5, category: "Bebidas" },
@@ -42,10 +32,31 @@ export function DashboardPage() {
     { id: 6, name: "Bolo de Cenoura", price: 8.5, category: "Alimentos" },
   ];
 
-  const openCommands = tables.filter((t) => t.status === "in-use").length;
-  const dailySales = 1247.8;
+  // Quantidade de comandas abertas
+  const openCommands = comandas.length;
+
+  // Soma do valor total das comandas
+  const dailySales = comandas.reduce(
+    (total, comanda) =>
+      total + comanda.itens.reduce((soma, item) => soma + item.price, 0),
+    0
+  );
 
   const navigate = useNavigate();
+
+  // Função para abrir nova comanda mockada
+  /*const abrirNovaComanda = () => {
+    const nova = {
+      id: comandas.length + 200,
+      itens: [{ name: "Café Expresso", price: 5.5 }],
+    };
+    setComandas([...comandas, nova]);
+  };
+
+  // Função para fechar uma comanda (remover do array)
+  const fecharComanda = (id: number) => {
+    setComandas(comandas.filter((c) => c.id !== id));
+  };*/
 
   return (
     <div className="flex-1 flex flex-col">

@@ -1,4 +1,5 @@
 import { Link, Outlet } from "react-router-dom";
+import { Coffee } from "lucide-react";
 
 export function PrivateLayout() {
   return (
@@ -7,9 +8,7 @@ export function PrivateLayout() {
         <div className="p-6 border-b">
           <Link to="/dashboard" className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-[#8B6F47] flex items-center justify-center text-white">
-              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path d="M5 12h14" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <Coffee className="w-6 h-6 text-white" strokeWidth={2} />
             </div>
             <div>
               <div className="font-semibold">CafeSystem</div>
